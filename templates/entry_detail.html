@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block content %}
+		<h3 id="{{object.id}}" entry_type="{{object.entry_type}}" ><a href="{{object.url}}">{{object.title}}</a></h3>
+		<span>[{{object.get_object_category_display}}] {{object.source}}</span>
+		<span>{{object.published}}</span>
+		{% if object.image_url %}
+		<img src="{{object.image_url}}" / >
+		{% endif %}
+		<p>{{object.description|safe}}</p>
+		{% if not object.read_later %}
+		<button onclick="mark_read_later({{object.id}}, '{{object.entry_type}}')">Mark to read later</button>
+		{% else %}
+		<button onclick="unmark_read_later({{object.id}}, '{{object.entry_type}}')">Unmark read later</button>
+		{% endif %}
+
+		{% if not object.interesting %}
+		<button onclick="mark_interesting({{object.id}}, '{{object.entry_type}}')">Mark interesting</button>
+		{% endif %}
+{% endblock %}

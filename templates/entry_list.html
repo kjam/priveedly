@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+		<progress max="{{total_unread}}" value="30">30 out of {{total_unread}}</progress>
+
+		{% for e in entry_list %}
+		<h3 id="{{e.id}}" entry_type="{{e.entry_type}}" ><a href="{{e.url}}">{{e.title}}</a></h3>
+		<span>[{{e.get_entry_category_display}}] {{e.source}}</span>
+		<span>{{e.published}}</span>
+    <span>{{e.recommended}}</span>
+		{% if e.image_url %}
+		<img src="{{e.image_url}}" / >
+		{% endif %}
+		<p>{{e.safe_text|truncatechars:300}}</p>
+		<a href="/{{e.entry_type}}/{{e.id}}/">Read More</a>
+		{% if e.read_later %}
+		<button onclick="mark_interesting({{e.id}}, '{{e.entry_type}}')">Mark interesting</button>   {% else %}
+		<button onclick="mark_read_later({{e.id}}, '{{e.entry_type}}')">Mark to read later</button>   {% endif %}
+		{% endfor %}
+		<button onclick="mark_read()">Mark Page as Read</button>
+{% endblock %}

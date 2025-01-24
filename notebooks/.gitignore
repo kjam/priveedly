@@ -1,0 +1,4 @@
+data/*
+experiments/*.txt
+experiments/models/*.pkl
+*.pkl

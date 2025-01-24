@@ -1,0 +1,53 @@
+---
+- hosts: YOUR_HOST_NAME
+  become: yes
+
+  tasks:
+    - name: update cron for parsing
+      cron: name="parse all for priveedly" user="{{your_user}}" minute=0 hour="*/2" job="cd /var/www/priveedly && /var/www/venv/priveedly/bin/python manage.py parse_all >> /dev/null"
+
+    - name: update cron for rating
+      cron: name="rate all for priveedly" user="{{your_user}}" minute=40 hour="*/2" job="cd /var/www/priveedly && /var/www/venv/priveedly/bin/python manage.py rate_all >> /dev/null"
+
+    - name: fetch python application
+      become_user: {{your_user}}
+      git: repo=git@github.com:{{your_github_user}}/priveedly.git dest=/var/www/priveedly key_file=~/.ssh/id_ecdsa accept_hostkey=yes force=yes
+
+    - name: pip self-update
+      pip:
+        name: pip
+        executable: /var/www/venv/priveedly/bin/pip3
+        state: latest
+
+    - name: install py requirements
+      pip: requirements=/var/www/priveedly/requirements.txt virtualenv=/var/www/venv/priveedly virtualenv_python=python3
+
+    - name: copy .venv
+      copy: src=.prod_env dest=/var/www/priveedly/.env
+
+    - name: copy settings
+      copy: src=prod_settings.py dest=/var/www/priveedly/priveedly/settings.py
+
+    - name: copy model
+      copy: src=notebooks/pipeline.pkl dest={{settings_location_for_model}}
+
+    - name: migrate
+      shell: cd /var/www/priveedly && /var/www/venv/priveedly/bin/python manage.py migrate
+
+    - name: collectstatic
+      shell: cd /var/www/priveedly && /var/www/venv/priveedly/bin/python manage.py collectstatic --noinput
+
+    - name: test
+      shell: cd /var/www/priveedly && /var/www/venv/priveedly/bin/python manage.py test
+
+    - name: restart uwsgi emperor
+      shell: systemctl restart emperor.uwsgi.service
+
+    - name: restart server
+      shell: /bin/true
+      notify:
+          - restart nginx
+
+  handlers:
+    - name: restart nginx
+      service: name=nginx state=restarted

@@ -1,0 +1,31 @@
+DEBUG=True # set to false for production
+
+SECRET_KEY=_pleaseputalongrandomstringhere_
+ALLOWED_HOSTS=127.0.0.1,YOUR_SERVER_IP_OR_DNS_HERE
+DB_USERNAME=changethisplease
+DB_PASSWORD=changethisplease
+DB_NAME=changethisplease
+DB_CONNSTR=enter_your_db_connection_string
+
+# note that these are different because of some setup redundancies I wanted for my setup, but you can make them the same again in the settings
+LOCAL_DB_USERNAME=changethisplease
+LOCAL_DB_PASSWORD=changethisplease
+LOCAL_DB_NAME=changethisplease
+LOCAL_DB_CONNSTR=enter_your_db_connection_string
+
+
+#for the following, you'll need a reddit account and to set yourself up with the reddit API
+REDDIT_USERNAME=____
+REDDIT_CLIENT_ID=____
+REDDIT_CLIENT_SECRET=____
+REDDIT_PASSWORD=____
+REDDIT_USER_AGENT="my version of priveedly via praw"
+
+PIPELINE_FILE=___enter path to your pipeline file if you trained your own via scikitlearn___
+
+
+# I don't know if this works anymore :(
+TWITTER_CONSUMER_KEY=____
+TWITTER_CONSUMER_SECRET=____
+TWITTER_ACCESS_TOKEN=____
+TWITTER_ACCESS_TOKEN_SECRET=____

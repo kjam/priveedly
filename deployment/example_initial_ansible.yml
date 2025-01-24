@@ -1,0 +1,172 @@
+---
+- hosts: YOUR_HOST_NAME
+  become: yes
+
+  tasks:
+
+    - name: update
+      apt: update_cache=yes
+
+    - name: install fail2ban
+      apt: pkg=fail2ban state=present
+
+    - name: install git
+      apt: name=git state=present
+
+    - name: build essential
+      apt: name=build-essential state=present
+
+    - name: nginx
+      apt: name=nginx state=present
+
+    - name: install py3
+      apt: name=python3 state=present
+
+    - name: install pip
+      apt: name=python3-pip state=present
+
+    - name: install uwsgi
+      apt: name=uwsgi state=present
+
+    - name: install emperor
+      apt: name=uwsgi-emperor state=present
+
+    - name: install uwsgi py3
+      apt: name=uwsgi-plugin-python3 state=present
+
+    - name: install certbot
+      apt: name=python3-certbot-nginx state=present
+
+    - name: install postgres
+      apt: name=postgresql state=present
+
+    - name: install aws
+      pip: name=awscli state=present
+
+    - name: mk aws dir
+      become_user: {{your_user}}
+      file: path=/home/{{your_user}}/.aws mode=0700 recurse=yes state=directory
+
+    - name: copy aws creds
+      become_user: {{your_user}}
+      copy: src=/home/{{your_user}}/.aws/credentials dest=/home/{{your_user}}/.aws/credentials
+
+    - name: copy aws config
+      become_user: {{your_user}}
+      copy: src=/home/{{your_user}}/.aws/config dest=/home/{{your_user}}/.aws/config
+
+    - name: install psycopg2
+      apt: name=python3-psycopg2 state=present
+
+    - name: install certbot
+      apt: name=certbot state=present install_recommends=yes
+
+    - name: install letsencrypt
+      apt: name=letsencrypt state=present install_recommends=yes
+
+    - name: change pr home perms to fetch
+      file: path=/var/www/priveedly mode=0777 state=directory recurse=yes
+      ignore_errors: yes
+
+    - name: run certbot
+      shell: certbot certonly --nginx -w /var/www/priveedly -d {{your_dns}} -n -m {{your_email}} --keep-until-expiring --agree-tos
+      ignore_errors: yes
+
+    - name: fetch python application
+      become_user: {{your_user}}
+      git: repo=git@github.com:YOUR_GITHUB/priveedly.git dest=/var/www/priveedly key_file=~/.ssh/id_ecdsa accept_hostkey=yes force=yes
+
+    - name: change home perms to fetch
+      file: path=/var/www/venv mode=0777 state=directory recurse=yes
+      ignore_errors: yes
+
+    - name: install virtualenv
+      pip: executable=pip3 name=virtualenv state=present
+
+    - name: install py requirements
+      pip: requirements=/var/www/priveedly/requirements.txt virtualenv=/var/www/venv/priveedly virtualenv_python=python3
+
+    - name: copy .venv
+      copy: src=.prod_env dest=/var/www/priveedly/priveedly/.env
+
+    - name: mk uwsgi dir
+      file: path=/etc/uwsgi/vassals state=directory recurse=yes mode=0644
+
+    - name: copy uwsgi
+      copy: src=priveedly.ini dest=/etc/uwsgi-emperor/vassals/priveedly.ini
+
+    - name: mk scripts dir
+      file: path=/home/{{your_user}}/scripts state=directory recurse=yes mode=0777
+
+    - name: copy cron
+      copy: src=backup.sh dest=/home/{{your_user}}/scripts/priveedly_backup.sh
+
+    - name: copy emperor config
+      copy: src=emperor.ini dest=/etc/uwsgi/emperor.ini
+
+    - name: copy systemd emperor config
+      copy: src=templates/emperor.uwsgi.service dest=/etc/systemd/system/emperor.uwsgi.service
+
+    - name: Create database
+      become: yes
+      become_user: postgres
+      become_method: sudo
+      postgresql_db: name=priveedly encoding='UTF-8' lc_collate='en_US.UTF-8' lc_ctype='en_US.UTF-8' state=present
+
+    - name: copy database
+      copy: src=templates/priveedly/dump.sql dest=/tmp/backup.sql
+
+    - name: Importing  data
+      become_user: postgres
+      shell: psql priveedly < /tmp/backup.sql
+
+    - name: Create role for database
+      become_user: postgres
+      postgresql_user: db=priveedly user={{your_db_user}} password={{your_db_password}} priv=ALL state=present
+
+    - name: Grant sequence permissions
+      become_user: postgres
+      postgresql_privs: database=priveedly state=present privs=ALL type=database roles=priveedly grant_option=no objs=priveedly
+
+      #- name: copy pgpass
+      #become_user: {{your_user}}
+      #copy: src=templates/pg_pgpass.txt dest=/home/{{your_user}}/.pgpass mode=0600
+
+      #- name: alter pg_hba
+      #become_user: postgres
+      #copy: src=templates/pg_hba.conf dest=/etc/postgresql/9.6/main/pg_hba.conf
+      #notify:
+      #    - restart postgres
+
+    - name: backup daily cron for sql
+      cron: name="backup daily cron sql" user="{{your_user}}" minute="0" hour="4" job="bash /home/{{your_user}}/scripts/priveedly_backup.sh -t daily"
+
+    - name: backup weekly cron for sql
+      cron: name="backup weekly cron sql" user="{{your_user}}" minute="0" hour="4" weekday="0" job="bash /home/{{your_user}}/scripts/priveedly_backup.sh -t weekly"
+
+    - name: backup monthly cron for sql
+      cron: name="backup monthly cron sql" user="{{your_user}}" special_time=monthly job="bash /home/{{your_user}}/scripts/priveedly_backup.sh -t monthly"
+
+    - name: restart uwsgi emperor
+      shell: systemctl restart emperor.uwsgi.service
+
+    - name: copy nginx files
+      copy: src=nginx.conf dest=/etc/nginx/sites-available/priveedly
+
+    - name: symlink and restart
+      file: src=/etc/nginx/sites-available/priveedly dest=/etc/nginx/sites-enabled/priveedly state=link
+
+    - name: restart server
+      shell: /bin/true
+      notify:
+          - restart nginx
+
+  handlers:
+    - name: restart ssh
+      service: name=ssh state=restarted
+
+    - name: restart nginx
+      service: name=nginx state=restarted
+
+    - name: restart postgres
+      service: name=postgresql state=restarted

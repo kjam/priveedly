@@ -1,0 +1,12 @@
+*.pyc
+db.sqlite3
+migrations/
+.DS_Store
+social_search.py
+.env
+.prod_env
+*.sql
+.ipynb_*
+.my_pgpass
+.pg_service.conf
+*.pkl
